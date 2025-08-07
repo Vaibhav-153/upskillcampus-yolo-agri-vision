@@ -1,0 +1,15 @@
+# Dataset configuration for Sesame Crop & Weed Detection
+
+# Paths to the training, validation, and test image directories
+# Paths are relative to the 'datasets' folder, which is standard practice.
+train: ./sesame_data/images/train
+val: ./sesame_data/images/val
+test: ./sesame_data/images/test
+
+# Number of classes
+nc: 2
+
+# Class names
+names:
+  0: crop
+  1: weed

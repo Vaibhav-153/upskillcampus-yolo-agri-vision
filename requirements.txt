@@ -1,5 +1,9 @@
 ultralytics
 torch
 torchvision
-opencv-python
+Flask
+Flask-Cors
+Pillow
 numpy
+opencv-python-headless
+# We use opencv-python-headless because a server doesn't have a screen, so it doesn't need the GUI components of the full OpenCV library.

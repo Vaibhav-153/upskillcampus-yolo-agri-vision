@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Updated Title and Favicon -->
+    <title>AgroVision AI</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>">
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for a modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-green-700">Agro-Vision: Crop and Weed Identifier</h1>
+            <p class="text-lg text-gray-600 mt-2">AI-powered detection for modern, sustainable farming.</p>
+            <!-- New line to specify the model's training data -->
+            <p class="text-sm text-gray-500 mt-1">(Note: This model is specifically trained to identify Sesame Crops.)</p>
+        </header>
+
+        <main class="bg-white p-6 rounded-2xl shadow-lg">
+            
+            <!-- Redesigned Output/Input Section -->
+            <div id="output-section" class="relative w-full border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[300px] flex items-center justify-center overflow-hidden">
+                
+                <!-- Combined Input Placeholder -->
+                <div id="placeholder" class="text-center text-gray-500">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium">Upload an image or start your camera</h3>
+                    <p class="mt-1 text-sm">PNG, JPG, GIF up to 10MB</p>
+                    <div class="mt-6 flex justify-center items-center gap-4">
+                        <label for="file-upload" class="relative cursor-pointer rounded-md bg-white font-medium text-amber-700 hover:text-amber-600">
+                            <span>⬆️ Upload a file</span>
+                            <input id="file-upload" name="file-upload" type="file" class="sr-only" accept="image/*">
+                        </label>
+                        <p class="text-xs">OR</p>
+                        <button id="webcam-button" class="relative cursor-pointer rounded-md bg-white font-medium text-green-600 hover:text-green-500">
+                           <span>📸 Use Camera</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Container for all media elements -->
+                <div id="media-container" class="relative hidden w-full max-w-full">
+                    <img id="source-image" class="rounded-lg w-full h-auto block" alt="Source Image">
+                    <video id="webcam-video" class="rounded-lg w-full h-auto hidden" autoplay playsinline></video>
+                    <canvas id="detection-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                </div>
+                
+                <div id="loader" class="loader absolute hidden"></div>
+            </div>
+            
+            <!-- Action buttons appear here -->
+            <div id="action-button-container" class="text-center mt-4"></div>
+
+            <!-- Detection Results Section -->
+            <div id="results-container" class="mt-6 hidden">
+                <h3 class="text-xl font-semibold mb-2">Detection Results:</h3>
+                <ul id="results-list" class="list-disc list-inside bg-gray-100 p-4 rounded-lg">
+                    <!-- Detection items will be added here dynamically -->
+                </ul>
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        const fileUpload = document.getElementById('file-upload');
+        const webcamButton = document.getElementById('webcam-button');
+        const sourceImage = document.getElementById('source-image');
+        const detectionCanvas = document.getElementById('detection-canvas');
+        const mediaContainer = document.getElementById('media-container');
+        const placeholder = document.getElementById('placeholder');
+        const loader = document.getElementById('loader');
+        const videoElement = document.getElementById('webcam-video');
+        const resultsContainer = document.getElementById('results-container');
+        const resultsList = document.getElementById('results-list');
+        const actionButtonContainer = document.getElementById('action-button-container');
+        const canvasCtx = detectionCanvas.getContext('2d');
+
+        let isWebcamActive = false;
+        let animationFrameId;
+
+        fileUpload.addEventListener('change', handleImageUpload);
+        webcamButton.addEventListener('click', startWebcam);
+
+        function handleImageUpload(event) {
+            if (isWebcamActive) stopWebcam();
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    sourceImage.src = e.target.result;
+                    sourceImage.onload = () => {
+                        placeholder.classList.add('hidden');
+                        mediaContainer.classList.remove('hidden');
+                        sourceImage.classList.remove('hidden');
+                        videoElement.classList.add('hidden');
+                        predict(file);
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function startWebcam() {
+            if (isWebcamActive) return;
+            try {
+                // Prioritize the back camera on mobile devices
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                videoElement.srcObject = stream;
+                isWebcamActive = true;
+                
+                placeholder.classList.add('hidden');
+                mediaContainer.classList.remove('hidden');
+                videoElement.classList.remove('hidden');
+                sourceImage.classList.add('hidden');
+                createActionButton('stop');
+
+                videoElement.onloadedmetadata = () => {
+                    predictWebcamFrame();
+                };
+            } catch (error) {
+                console.error("Error accessing webcam:", error);
+                alert("Could not access webcam. Please grant permission and ensure you are on a secure (https) connection if deployed.");
+            }
+        }
+
+        function stopWebcam() {
+            if (videoElement.srcObject) {
+                videoElement.srcObject.getTracks().forEach(track => track.stop());
+            }
+            cancelAnimationFrame(animationFrameId);
+            isWebcamActive = false;
+        }
+
+        function resetApp() {
+            stopWebcam();
+            
+            placeholder.classList.remove('hidden');
+            mediaContainer.classList.add('hidden');
+            resultsContainer.classList.add('hidden');
+            actionButtonContainer.innerHTML = '';
+            
+            sourceImage.src = '';
+            fileUpload.value = ''; // Reset file input
+            
+            clearCanvas();
+            resultsList.innerHTML = '';
+        }
+
+        function createActionButton(type) {
+            actionButtonContainer.innerHTML = ''; // Clear any existing button
+            const button = document.createElement('button');
+            if (type === 'stop') {
+                button.textContent = '⏹️ Stop Camera';
+                button.className = 'bg-red-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-red-600';
+                // FIX: The stop button should call resetApp to return to the main screen
+                button.onclick = resetApp;
+            } else if (type === 'reset') {
+                button.textContent = '🔄 Clear & Start Over';
+                button.className = 'bg-gray-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-gray-600';
+                button.onclick = resetApp;
+            }
+            actionButtonContainer.appendChild(button);
+        }
+
+        function predictWebcamFrame() {
+            if (!isWebcamActive) return;
+            const canvas = document.createElement('canvas');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            canvas.getContext('2d').drawImage(videoElement, 0, 0);
+            canvas.toBlob(blob => {
+                if (blob) predict(blob, true);
+            }, 'image/jpeg');
+            animationFrameId = requestAnimationFrame(predictWebcamFrame);
+        }
+
+        async function predict(imageBlob, isWebcamFrame = false) {
+            if (!isWebcamActive && !isWebcamFrame) { // Ensure loader only shows for uploads
+                loader.classList.remove('hidden');
+            }
+            const formData = new FormData();
+            formData.append('file', imageBlob);
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/predict', {
+                    method: 'POST',
+                    body: formData,
+                });
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const detections = await response.json();
+                drawDetections(detections);
+                updateResultsList(detections); // This will now handle the "no detections" case
+            } catch (error) {
+                console.error("Prediction API error:", error);
+                alert("Connection to server failed. Is the Python backend running?");
+            } finally {
+                if (!isWebcamFrame) {
+                    loader.classList.add('hidden');
+                    createActionButton('reset'); // Show reset button after prediction
+                }
+            }
+        }
+        
+        function updateResultsList(detections) {
+            resultsList.innerHTML = '';
+            if (detections && detections.length > 0) {
+                detections.forEach(det => {
+                    const li = document.createElement('li');
+                    const color = det.class_name.toLowerCase() === 'weed' ? 'text-red-600' : 'text-green-600';
+                    li.innerHTML = `<span class="font-bold ${color}">${det.class_name}</span> detected with ${Math.round(det.confidence * 100)}% confidence.`;
+                    resultsList.appendChild(li);
+                });
+            } else {
+                // NEW: Provide clear feedback when no objects are detected
+                const li = document.createElement('li');
+                li.textContent = 'No crops or weeds detected in the image.';
+                resultsList.appendChild(li);
+            }
+            resultsContainer.classList.remove('hidden');
+        }
+
+        function drawDetections(detections) {
+            const displayElement = isWebcamActive ? videoElement : sourceImage;
+            detectionCanvas.width = displayElement.clientWidth;
+            detectionCanvas.height = displayElement.clientHeight;
+            
+            const scaleX = detectionCanvas.width / (isWebcamActive ? videoElement.videoWidth : sourceImage.naturalWidth);
+            const scaleY = detectionCanvas.height / (isWebcamActive ? videoElement.videoHeight : sourceImage.naturalHeight);
+
+            clearCanvas();
+
+            detections.forEach(det => {
+                const [x1, y1, x2, y2] = det.coordinates;
+                const className = det.class_name;
+                const confidence = det.confidence;
+                const color = className.toLowerCase() === 'weed' ? '#ef4444' : '#22c55e';
+                
+                const scaledX1 = x1 * scaleX;
+                const scaledY1 = y1 * scaleY;
+                const scaledWidth = (x2 - x1) * scaleX;
+                const scaledHeight = (y2 - y1) * scaleY;
+
+                canvasCtx.strokeStyle = color;
+                canvasCtx.lineWidth = 3;
+                canvasCtx.strokeRect(scaledX1, scaledY1, scaledWidth, scaledHeight);
+
+                const label = `${className} ${confidence.toFixed(2)}`;
+                const textWidth = canvasCtx.measureText(label).width;
+                const textHeight = 14;
+                
+                let rectY = scaledY1 - (textHeight + 10);
+                let textY = scaledY1 - 5;
+
+                if (rectY < 0) {
+                    rectY = scaledY1 + 5;
+                    textY = scaledY1 + textHeight + 5;
+                }
+
+                canvasCtx.fillStyle = color;
+                canvasCtx.fillRect(scaledX1 - 1, rectY, textWidth + 10, textHeight + 5);
+
+                canvasCtx.fillStyle = '#ffffff';
+                canvasCtx.font = `${textHeight}px Inter`;
+                canvasCtx.fillText(label, scaledX1 + 5, textY);
+            });
+        }
+
+        function clearCanvas() {
+            canvasCtx.clearRect(0, 0, detectionCanvas.width, detectionCanvas.height);
+        }
+    </script>
+</body>
+</html>

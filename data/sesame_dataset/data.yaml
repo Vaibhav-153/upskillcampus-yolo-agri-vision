@@ -2,9 +2,9 @@
 
 # Paths to the training, validation, and test image directories
 # Paths are relative to the 'datasets' folder, which is standard practice.
-train: ./sesame_data/images/train
-val: ./sesame_data/images/val
-test: ./sesame_data/images/test
+train: ./images/train
+val: ./images/val
+test: ./images/test
 
 # Number of classes
 nc: 2

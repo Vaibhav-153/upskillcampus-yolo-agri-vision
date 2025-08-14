@@ -205,3 +205,33 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Virtual Environment
+venv/
+
+# Generated experiment runs
+runs/
+
+# Python cache
+__pycache__/
+.cache/
+
+# Model files (unless you want to track them)
+*.pt
+
+# Python virtual environment
+venv/
+
+# Jupyter/Colab checkpoints
+.ipynb_checkpoints/
+
+# Python cache
+__pycache__/
+.cache/
+
+# Experiment results (no need to track these in Git)
+runs/
+
+# IDE-specific folders
+.vscode/
+.idea/

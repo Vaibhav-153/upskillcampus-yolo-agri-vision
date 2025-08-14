@@ -2,8 +2,8 @@
 FROM python:3.9-slim
 
 # NEW: Install system dependencies required by OpenCV
-# This command installs the missing graphics library (libGL)
-RUN apt-get update && apt-get install -y libgl1-mesa-glx
+# This command installs the missing graphics library (libgl1)
+RUN apt-get update && apt-get install -y libgl1
 
 # Set the working directory in the container
 WORKDIR /app

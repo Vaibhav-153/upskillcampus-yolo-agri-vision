@@ -1,9 +1,8 @@
 # Use an official Python runtime as a parent image
 FROM python:3.9-slim
 
-# NEW: Install system dependencies required by OpenCV
-# This command installs the missing graphics library (libgl1)
-RUN apt-get update && apt-get install -y libgl1
+# NEW: Install a more complete set of system dependencies required by OpenCV
+RUN apt-get update && apt-get install -y libgl1 libglib2.0-0
 
 # Set the working directory in the container
 WORKDIR /app

@@ -1,25 +1,20 @@
 # app.py
-from flask import Flask, request, jsonify
-from flask_cors import CORS  # Import the CORS library
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 from ultralytics import YOLO
 from PIL import Image
 import io
 import torch
+import os
 
 # --- Configuration ---
-# Initialize the Flask application
-app = Flask(__name__)
+app = Flask(__name__, static_folder='.')
 
-# Enable CORS for all routes. This is crucial for allowing your
-# frontend to communicate with this backend.
 CORS(app)
 
-# Check if a GPU is available and set the device accordingly
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Loading model on device: {device}")
 
-# Load your final, trained YOLO model
-# IMPORTANT: Make sure this path points to your best model file
 MODEL_PATH = 'models/crop_weed_detector_v1.pt' 
 try:
     model = YOLO(MODEL_PATH).to(device)
@@ -27,6 +22,15 @@ try:
 except Exception as e:
     print(f"Error loading model: {e}")
     model = None
+
+# --- NEW: Route for the main page ---
+@app.route('/')
+def index():
+    """
+    This function serves the main index.html file when a user visits
+    the root URL of the web application.
+    """
+    return send_from_directory('.', 'index.html')
 
 # --- API Endpoint for Prediction ---
 @app.route('/predict', methods=['POST'])
@@ -51,10 +55,8 @@ def predict():
             image_bytes = file.read()
             image = Image.open(io.BytesIO(image_bytes))
 
-            # Run YOLO model prediction
-            results = model(image, conf=0.5) # 50% confidence threshold
+            results = model(image, conf=0.5)
 
-            # Process results
             detections = []
             for result in results:
                 boxes = result.boxes.cpu().numpy()
@@ -79,5 +81,6 @@ def predict():
 
 # --- Main Function to Run the App ---
 if __name__ == '__main__':
-    # host='0.0.0.0' makes it accessible from any IP address
-    app.run(host='0.0.0.0', port=7860)
+    # Get the port from the environment variable, default to 7860
+    port = int(os.environ.get('PORT', 7860))
+    app.run(host='0.0.0.0', port=port)

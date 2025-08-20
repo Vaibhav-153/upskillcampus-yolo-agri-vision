@@ -36,16 +36,13 @@
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-green-700">Agro-Vision: Crop and Weed Identifier</h1>
             <p class="text-lg text-gray-600 mt-2">AI-powered detection for modern, sustainable farming.</p>
-            <!-- New line to specify the model's training data -->
             <p class="text-sm text-gray-500 mt-1">(Note: This model is specifically trained to identify Sesame Crops.)</p>
         </header>
 
         <main class="bg-white p-6 rounded-2xl shadow-lg">
             
-            <!-- Redesigned Output/Input Section -->
             <div id="output-section" class="relative w-full border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[300px] flex items-center justify-center overflow-hidden">
                 
-                <!-- Combined Input Placeholder -->
                 <div id="placeholder" class="text-center text-gray-500">
                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2z" />
@@ -64,7 +61,6 @@
                     </div>
                 </div>
 
-                <!-- Container for all media elements -->
                 <div id="media-container" class="relative hidden w-full max-w-full">
                     <img id="source-image" class="rounded-lg w-full h-auto block" alt="Source Image">
                     <video id="webcam-video" class="rounded-lg w-full h-auto hidden" autoplay playsinline></video>
@@ -74,15 +70,11 @@
                 <div id="loader" class="loader absolute hidden"></div>
             </div>
             
-            <!-- Action buttons appear here -->
             <div id="action-button-container" class="text-center mt-4"></div>
 
-            <!-- Detection Results Section -->
             <div id="results-container" class="mt-6 hidden">
                 <h3 class="text-xl font-semibold mb-2">Detection Results:</h3>
-                <ul id="results-list" class="list-disc list-inside bg-gray-100 p-4 rounded-lg">
-                    <!-- Detection items will be added here dynamically -->
-                </ul>
+                <ul id="results-list" class="list-disc list-inside bg-gray-100 p-4 rounded-lg"></ul>
             </div>
         </main>
 
@@ -130,7 +122,6 @@
         async function startWebcam() {
             if (isWebcamActive) return;
             try {
-                // Prioritize the back camera on mobile devices
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                 videoElement.srcObject = stream;
                 isWebcamActive = true;
@@ -146,7 +137,7 @@
                 };
             } catch (error) {
                 console.error("Error accessing webcam:", error);
-                alert("Could not access webcam. Please grant permission and ensure you are on a secure (https) connection if deployed.");
+                alert("Could not access webcam. Please grant permission.");
             }
         }
 
@@ -160,26 +151,22 @@
 
         function resetApp() {
             stopWebcam();
-            
             placeholder.classList.remove('hidden');
             mediaContainer.classList.add('hidden');
             resultsContainer.classList.add('hidden');
             actionButtonContainer.innerHTML = '';
-            
             sourceImage.src = '';
-            fileUpload.value = ''; // Reset file input
-            
+            fileUpload.value = '';
             clearCanvas();
             resultsList.innerHTML = '';
         }
 
         function createActionButton(type) {
-            actionButtonContainer.innerHTML = ''; // Clear any existing button
+            actionButtonContainer.innerHTML = '';
             const button = document.createElement('button');
             if (type === 'stop') {
                 button.textContent = '⏹️ Stop Camera';
                 button.className = 'bg-red-500 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-red-600';
-                // FIX: The stop button should call resetApp to return to the main screen
                 button.onclick = resetApp;
             } else if (type === 'reset') {
                 button.textContent = '🔄 Clear & Start Over';
@@ -202,28 +189,27 @@
         }
 
         async function predict(imageBlob, isWebcamFrame = false) {
-            if (!isWebcamActive && !isWebcamFrame) { // Ensure loader only shows for uploads
-                loader.classList.remove('hidden');
-            }
+            if (!isWebcamFrame) loader.classList.remove('hidden');
             const formData = new FormData();
             formData.append('file', imageBlob);
 
             try {
-                const response = await fetch('http://127.0.0.1:5000/predict', {
+                // CORRECTED: Use the local server address
+                const response = await fetch('http://127.0.0.1:7860/predict', {
                     method: 'POST',
                     body: formData,
                 });
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const detections = await response.json();
                 drawDetections(detections);
-                updateResultsList(detections); // This will now handle the "no detections" case
+                updateResultsList(detections);
             } catch (error) {
                 console.error("Prediction API error:", error);
                 alert("Connection to server failed. Is the Python backend running?");
             } finally {
                 if (!isWebcamFrame) {
                     loader.classList.add('hidden');
-                    createActionButton('reset'); // Show reset button after prediction
+                    createActionButton('reset');
                 }
             }
         }
@@ -238,7 +224,6 @@
                     resultsList.appendChild(li);
                 });
             } else {
-                // NEW: Provide clear feedback when no objects are detected
                 const li = document.createElement('li');
                 li.textContent = 'No crops or weeds detected in the image.';
                 resultsList.appendChild(li);

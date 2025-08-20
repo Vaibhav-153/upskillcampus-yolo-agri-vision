@@ -9,19 +9,27 @@ import os
 
 # --- Configuration ---
 app = Flask(__name__, static_folder='.')
-
 CORS(app)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 print(f"Loading model on device: {device}")
 
-MODEL_PATH = 'models/crop_weed_detector_v1.pt' 
-try:
-    model = YOLO(MODEL_PATH).to(device)
-    print("Model loaded successfully.")
-except Exception as e:
-    print(f"Error loading model: {e}")
-    model = None
+# Construct the model path in a platform-independent way
+MODEL_PATH = os.path.join('models', 'sesame_weed_detector_v1.pt')
+
+# --- Model Loading with Better Error Checking ---
+model = None
+# Check if the model file exists before trying to load it
+if os.path.exists(MODEL_PATH):
+    try:
+        model = YOLO(MODEL_PATH).to(device)
+        print("Model loaded successfully.")
+    except Exception as e:
+        print(f"Error loading model: {e}")
+else:
+    print(f"FATAL ERROR: Model file not found at '{MODEL_PATH}'")
+    print("Please ensure the 'models' folder and the '.pt' file exist in the correct location.")
+
 
 # --- NEW: Route for the main page ---
 @app.route('/')
@@ -40,7 +48,7 @@ def predict():
     runs inference, and returns the detected object data as JSON.
     """
     if not model:
-        return jsonify({'error': 'Model is not loaded'}), 500
+        return jsonify({'error': 'Model is not loaded or failed to load. Check server logs.'}), 500
 
     if 'file' not in request.files:
         return jsonify({'error': 'No file part in the request'}), 400

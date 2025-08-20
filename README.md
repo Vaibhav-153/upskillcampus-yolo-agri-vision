@@ -1,4 +1,4 @@
-# Agri-Vision: Crop & Weed Identifier 🌱🤖
+# Agro-Vision: Crop & Weed Identifier 🌱🤖
 
 ## Overview
 Agri-Vision is an AI-powered web application designed to identify crops and weeds in real time using YOLO-based object detection.  
